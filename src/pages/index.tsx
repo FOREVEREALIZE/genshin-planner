@@ -1,118 +1,198 @@
-import Image from "next/image";
-import { Inter } from "next/font/google";
-
-const inter = Inter({ subsets: ["latin"] });
+import React, {useContext} from "react";
+import CharacterModal from "@/components/character-modal";
+import {StoreContext} from "@/lib/store-context";
+import {Minus, Plus} from "lucide-react";
+import {Button} from "@/components/ui/button";
+import {
+    Dialog, DialogClose, DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger
+} from "@/components/ui/dialog";
+import Store from "@/lib/store";
 
 export default function Home() {
-  return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    const {store, setStore} = useContext(StoreContext)
+
+    return (
+        <div className="flex flex-col h-screen p-8 bg-black gap-8">
+            <div className="flex flex-row h-8 gap-8">
+                <Button onClick={() => {
+                    localStorage.setItem("store", store.serialize())
+                }}>Save</Button>
+                <Button variant="secondary" onClick={() => {
+                    if (!localStorage.getItem("store")) return
+                    setStore(store.stEx(store.deserialize, localStorage.getItem("store") as string))
+                }}>Load</Button>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="destructive">Clear</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] !bg-red-700">
+                        <DialogHeader>
+                            <DialogTitle>Are you sure?</DialogTitle>
+                            <DialogDescription>
+                                This will clear all your data. This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="secondary">Cancel</Button>
+                            </DialogClose>
+                            <DialogClose asChild>
+                                <Button type="submit" onClick={() => {
+                                    localStorage.clear()
+                                    setStore(new Store())
+                                }}>Clear</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+            <div className="flex flex-row h-24 gap-8">
+                <CharacterModal name="Neuvillette" ch_id="neuvillette"/>
+                <CharacterModal name="Bennett" ch_id="bennett"/>
+            </div>
+            <div className="flex flex-row gap-8">
+                <div className="grid grid-cols-4 w-[calc(100%/3)]">
+                    {Object.entries(store.getRequiredAscensionMaterialsForAllCharacters()).map(([it_key, it_value]) => {
+                        return <>
+                            <h2 className="col-span-2">
+                                {it_key.split("_").map(value => {
+                                    return value.charAt(0).toUpperCase() + value.slice(1)
+                                }).join(" ")}
+                            </h2>
+                            <div className="flex flex-row gap-4 justify-center items-center">
+                                <Minus
+                                    className={`cursor-pointer transition-all duration-1000 ${store.getAscensionMaterialCount(it_key) <= 0 ? "text-neutral-600" : ""}`}
+                                    onClick={() => {
+                                        if (store.getAscensionMaterialCount(it_key) <= 0) return
+                                        setStore(store.stEx(store.setAscensionMaterialCount, it_key, store.getAscensionMaterialCount(it_key) - 1))
+                                    }}/>
+                                <Plus
+                                    className={`cursor-pointer transition-all duration-1000 ${store.getAscensionMaterialCount(it_key) >= it_value ? "text-neutral-600" : ""}`}
+                                    onClick={() => {
+                                        if (store.getAscensionMaterialCount(it_key) >= it_value) return
+                                        setStore(store.stEx(store.setAscensionMaterialCount, it_key, store.getAscensionMaterialCount(it_key) + 1))
+                                    }}/>
+                            </div>
+                            <span className="w-full flex flex-row justify-end items-center">
+                                <span
+                                    className={`select-none transition-all duration-1000 ${store.getAscensionMaterialCount(it_key) >= it_value ? "text-neutral-600 text-sm" : "text-white text-base"}`}>
+                                    {store.getAscensionMaterialCount(it_key)}
+                                </span>
+                                <span className="w-1"/>
+                                <span className="text-neutral-600 text-sm select-none">/{it_value}</span>
+                            </span>
+                        </>
+                    })}
+                </div>
+                <div className="grid grid-cols-5 w-1/2 grid-rows-4 h-min">
+                    <h2 className="col-span-3 h-min">
+                        EXP
+                    </h2>
+                    <span className="w-full flex flex-row justify-end items-center h-min col-span-2">
+                        <span
+                            className={`select-none transition-all duration-1000 ${store.getCurrentExp() >= store.getRequiredExpForAllCharacters() ? "text-neutral-600 text-sm" : "text-white text-base"}`}
+                        >
+                            {store.getCurrentExp()}
+                        </span>
+                        <span className="w-1"/>
+                        <span className="text-neutral-600 text-sm select-none">
+                            /{store.getRequiredExpForAllCharacters()}
+                        </span>
+                    </span>
+
+                    <h2 className="col-span-2 h-min">
+                        Hero&apos;s Wit
+                    </h2>
+                    <div className="flex flex-row gap-4 justify-center items-center h-min">
+                        <Minus
+                            className={`cursor-pointer transition-all duration-1000 ${store.getExpMaterialCount("heros_wit") <= 0 ? "text-neutral-600" : ""}`}
+                            onClick={() => {
+                                if (store.getExpMaterialCount("heros_wit") <= 0) return
+                                setStore(store.stEx(store.setExpMaterialCount, "heros_wit", store.getExpMaterialCount("heros_wit") - 1))
+                            }}/>
+                        <Plus
+                            className={`cursor-pointer transition-all duration-1000 ${store.getExpMaterialCount("heros_wit") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("heros_wit")) / 20000) ? "text-neutral-600" : ""}`}
+                            onClick={() => {
+                                if (store.getExpMaterialCount("heros_wit") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("heros_wit")) / 20000)) return
+                                setStore(store.stEx(store.setExpMaterialCount, "heros_wit", store.getExpMaterialCount("heros_wit") + 1))
+                            }}/>
+                    </div>
+                    <span className="w-full flex flex-row justify-end items-center h-min col-span-2">
+                        <span
+                            className={`select-none transition-all duration-1000 ${store.getExpMaterialCount("heros_wit") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("heros_wit")) / 20000) ? "text-neutral-600 text-sm" : "text-white text-base"}`}
+                        >
+                            {store.getExpMaterialCount("heros_wit")}
+                        </span>
+                        <span className="w-1"/>
+                        <span className="text-neutral-600 text-sm select-none">
+                            /{Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("heros_wit")) / 20000)}
+                        </span>
+                    </span>
+
+                    <h2 className="col-span-2 h-min">
+                        Adventurer&apos;s Experience
+                    </h2>
+                    <div className="flex flex-row gap-4 justify-center items-center h-min">
+                        <Minus
+                            className={`cursor-pointer transition-all duration-1000 ${store.getExpMaterialCount("adventurers_experience") <= 0 ? "text-neutral-600" : ""}`}
+                            onClick={() => {
+                                if (store.getExpMaterialCount("adventurers_experience") <= 0) return
+                                setStore(store.stEx(store.setExpMaterialCount, "adventurers_experience", store.getExpMaterialCount("adventurers_experience") - 1))
+                            }}/>
+                        <Plus
+                            className={`cursor-pointer transition-all duration-1000 ${store.getExpMaterialCount("adventurers_experience") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("adventurers_experience")) / 5000) ? "text-neutral-600" : ""}`}
+                            onClick={() => {
+                                if (store.getExpMaterialCount("adventurers_experience") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("adventurers_experience")) / 5000)) return
+                                setStore(store.stEx(store.setExpMaterialCount, "adventurers_experience", store.getExpMaterialCount("adventurers_experience") + 1))
+                            }}/>
+                    </div>
+                    <span className="w-full flex flex-row justify-end items-center h-min col-span-2">
+                        <span
+                            className={`select-none transition-all duration-1000 ${store.getExpMaterialCount("adventurers_experience") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("adventurers_experience")) / 5000) ? "text-neutral-600 text-sm" : "text-white text-base"}`}
+                        >
+                            {store.getExpMaterialCount("adventurers_experience")}
+                        </span>
+                        <span className="w-1"/>
+                        <span className="text-neutral-600 text-sm select-none">
+                            /{Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("adventurers_experience")) / 5000)}
+                        </span>
+                    </span>
+
+                    <h2 className="col-span-2 h-min">
+                        Wanderer&apos;s Advice
+                    </h2>
+                    <div className="flex flex-row gap-4 justify-center items-center h-min">
+                        <Minus
+                            className={`cursor-pointer transition-all duration-1000 ${store.getExpMaterialCount("wanderers_advice") <= 0 ? "text-neutral-600" : ""}`}
+                            onClick={() => {
+                                if (store.getExpMaterialCount("wanderers_advice") <= 0) return
+                                setStore(store.stEx(store.setExpMaterialCount, "wanderers_advice", store.getExpMaterialCount("wanderers_advice") - 1))
+                            }}/>
+                        <Plus
+                            className={`cursor-pointer transition-all duration-1000 ${store.getExpMaterialCount("wanderers_advice") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("wanderers_advice")) / 1000) ? "text-neutral-600" : ""}`}
+                            onClick={() => {
+                                if (store.getExpMaterialCount("wanderers_advice") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("wanderers_advice")) / 1000)) return
+                                setStore(store.stEx(store.setExpMaterialCount, "wanderers_advice", store.getExpMaterialCount("wanderers_advice") + 1))
+                            }}/>
+                    </div>
+                    <span className="w-full flex flex-row justify-end items-center h-min col-span-2">
+                        <span
+                            className={`select-none transition-all duration-1000 ${store.getExpMaterialCount("wanderers_advice") >= Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("wanderers_advice")) / 1000) ? "text-neutral-600 text-sm" : "text-white text-base"}`}
+                        >
+                            {store.getExpMaterialCount("wanderers_advice")}
+                        </span>
+                        <span className="w-1"/>
+                        <span className="text-neutral-600 text-sm select-none">
+                            /{Math.ceil((store.getRequiredExpForAllCharacters() - store.getCurrentExpWithoutMaterial("wanderers_advice")) / 1000)}
+                        </span>
+                    </span>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+    );
 }
